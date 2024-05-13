@@ -574,7 +574,7 @@ def item():
             'Item', item['item_name'])
         if not item_exists:
             try:
-                doc = frappe.get_doc(item)
+                doc = frappe.get_doc('Item', 'Expense Item')
                 doc.insert()
                 tally_response.append(
                     {'name': item['item_name'], 'tally_object': 'Stock Item', 'message': 'Success'})
@@ -611,29 +611,56 @@ def create_hsn(item):
             doc = frappe.get_doc(req)
             doc.insert()
 
+
+
 @frappe.whitelist()
 def voucher():
     payload = json.loads(frappe.request.data)
-    sales = payload['data']
-    
+    print(payload)
     tally_response = []
 
-    for sale in sales:
+    for sale in payload['data']:
+        if 'items' in sale and sale['items']:
+            pass
+        else:
+            default_item = {
+                'item_code': 'Expense Item',
+                'item_name': 'Expense Item',
+                'qty': 1,
+            }
+            sale['items'] = [default_item]
+
+        if 'taxes' in sale:
+            for tax in sale['taxes']:
+                tax['charge_type'] = 'Actual'
+
         sales_exists = frappe.db.exists(
             sale['doctype'], sale['webstatus_docname'])
         if not sales_exists:
             try:
                 doc = frappe.get_doc(sale)
                 doc.insert()
-                doc.submit()
-                tally_response.append(
-                    {'name': sale['tally_masterid'], 'docname': doc.name, 'tally_object': 'voucher', 'message': 'Success'})
+                tally_response.append({
+                    'name': sale['tally_masterid'],
+                    'docname': doc.name,
+                    'tally_object': 'voucher',
+                    'message': 'Success'
+                })
             except Exception as e:
-                tally_response.append(
-                    {'name': sale['tally_masterid'], 'tally_object': 'voucher', 'message': str(e)})
+                frappe.log_error(tally_response.append({
+                    'name': sale['tally_masterid'],
+                    'tally_object': 'voucher',
+                    'message': str(e)
+                     
+                }))
         else:
-            tally_response.append(
-                    {'name': sale['tally_masterid'], 'docname': doc.name, 'tally_object': 'voucher', 'message': 'Already Exists'})
+            tally_response.append({
+                'name': sale['tally_masterid'],
+                'docname': doc.name,
+                'tally_object': 'voucher',
+                'message': 'Already Exists'
+            })
 
     return {"status": True, 'data': tally_response}
-    
+
+  
